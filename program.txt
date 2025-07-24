@@ -1,0 +1,63 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <DHT.h>
+
+#define DHTPIN 2       // DHT11 connected to digital pin 2
+#define DHTTYPE DHT11  // DHT 11
+#define soilPin A0     // Soil moisture analog pin
+#define ldrPin A1      // LDR analog pin
+
+DHT dht(DHTPIN, DHTTYPE);
+LiquidCrystal_I2C lcd(0x27, 16, 2); // LCD address might be 0x3F for some modules
+
+void setup() {
+  Serial.begin(9600);
+  dht.begin();
+  lcd.init();
+  lcd.backlight();
+  lcd.clear();
+
+  lcd.setCursor(0, 0);
+  lcd.print("AGRI KIT INIT...");
+  delay(2000);
+}
+
+void loop() {
+  float temp = dht.readTemperature();
+  float hum = dht.readHumidity();
+  int soil = analogRead(soilPin);
+  int light = analogRead(ldrPin);
+
+  // Convert analog soil moisture to %
+  int soilPercent = map(soil, 1023, 0, 0, 100); // dry = 1023, wet = 0
+  int lightPercent = map(light, 0, 1023, 0, 100); // brighter = higher
+
+  // Print to Serial Monitor
+  Serial.print("Temp: "); Serial.print(temp); Serial.print("°C, ");
+  Serial.print("Humidity: "); Serial.print(hum); Serial.print("%, ");
+  Serial.print("Soil: "); Serial.print(soilPercent); Serial.print("%, ");
+  Serial.print("Light: "); Serial.print(lightPercent); Serial.println("%");
+
+  // Display on LCD
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("T:"); lcd.print(temp); lcd.print("C ");
+  lcd.print("H:"); lcd.print(hum); lcd.print("%");
+
+  lcd.setCursor(0, 1);
+  lcd.print("S:"); lcd.print(soilPercent); lcd.print("% ");
+  lcd.print("L:"); lcd.print(lightPercent); lcd.print("%");
+
+  delay(2000); // 2-second refresh
+
+  // Recommendation Logic (printed in Serial)
+  if (soilPercent < 30) {
+    Serial.println("?? Soil Dry: Irrigation Recommended");
+  } else {
+    Serial.println("? Soil Moisture Sufficient");
+  }
+
+  if (lightPercent < 30) {
+    Serial.println("?? Low Sunlight: Adjust exposure");
+  }
+}
